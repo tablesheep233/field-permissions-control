@@ -1,0 +1,2 @@
+org.springframework.boot.SpringApplicationRunListener=\
+  com.github.tablesheep233.permission.control.field.context.RecordMainClassRunListener

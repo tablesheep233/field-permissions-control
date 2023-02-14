@@ -11,8 +11,10 @@ public class ArrayMetaData extends GenericMetaData {
         this.actualType = actualType;
     }
 
-    public void setActualType(Class<?> actualType) {
+    public ArrayMetaData(String key, Class<?> actualType, MetaData actualData) {
+        super(key);
         this.actualType = actualType;
+        this.actualData = actualData;
     }
 
     public void setActualData(MetaData actualData) {
@@ -27,10 +29,6 @@ public class ArrayMetaData extends GenericMetaData {
     @Override
     public Class<?> getActualType() {
         return actualType;
-    }
-
-    public String getActualTypeName() {
-        return actualType.getTypeName();
     }
 
     @Override

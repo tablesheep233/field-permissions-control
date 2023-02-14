@@ -2,7 +2,7 @@ package com.github.tablesheep233.permission.control.field.metadata;
 
 public class GenericMetaData implements MetaData {
 
-    private String key;
+    private final String key;
 
     private Class<?> type;
 

@@ -10,14 +10,25 @@ import java.util.*;
 @Component
 public class MetaDataFactory {
 
-    public static final String ACTUAL = "@";
     public static final String PLACEHOLDER = "?";
+
+    private static final Collection<String> BASIC_TYPE = List.of(
+            Byte.TYPE.getTypeName(), Byte.class.getTypeName(),
+            Boolean.TYPE.getTypeName(), Boolean.class.getTypeName(),
+            Character.TYPE.getTypeName(), Character.class.getTypeName(),
+            Short.TYPE.getTypeName(), Short.class.getTypeName(),
+            Integer.TYPE.getTypeName(), Integer.class.getTypeName(),
+            Float.TYPE.getTypeName(), Float.class.getTypeName(),
+            Double.TYPE.getTypeName(), Double.class.getTypeName(),
+            Long.TYPE.getTypeName(), Long.class.getTypeName(),
+            String.class.getTypeName()
+    );
 
     private final Map<String, RootMetaData> rootMetaDataMap = new HashMap<>(256);
     private final Map<String, MetaData> classMetaDataMap = new HashMap<>(256);
     private final Map<String, Map<String, String>> typeParameterMap = new HashMap<>(128);
     private final Map<String, MetaData> genericParameterMap = new HashMap<>(128);
-    private final List<String> resolvingGenericParameter = new ArrayList<>();
+    private final List<String> resolvingGenericParameter = new ArrayList<>(8);
 
     public synchronized MetaData create(String key, Class<?> clazz) {
         return rootMetaDataMap.computeIfAbsent(key, (k) -> {
@@ -54,11 +65,14 @@ public class MetaDataFactory {
     }
 
     private MetaData doResolveGenericArrayType(GenericArrayType genericType) {
+        if (genericParameterMap.containsKey(genericType.toString())) {
+            return genericParameterMap.get(genericType.toString());
+        }
+
         Type genericComponentType = genericType.getGenericComponentType();
         if (genericComponentType instanceof  ParameterizedType) {
-            ArrayMetaData arrayMetaData = new ArrayMetaData(PLACEHOLDER, rawType(((ParameterizedType) genericComponentType).getRawType()));
-            MetaData metaData = doResolveParameterizedType((ParameterizedType) genericComponentType);
-            arrayMetaData.setActualData(metaData);
+            ArrayMetaData arrayMetaData = new ArrayMetaData(PLACEHOLDER, rawType(((ParameterizedType) genericComponentType).getRawType()), doResolveParameterizedType((ParameterizedType) genericComponentType));
+            genericParameterMap.put(genericType.toString(), arrayMetaData);
             return arrayMetaData;
         }
         throw new RuntimeException();
@@ -94,9 +108,9 @@ public class MetaDataFactory {
             Class<?> componentType = clazz.getComponentType();
             ArrayMetaData arrayMetaData = new ArrayMetaData(PLACEHOLDER, componentType);
             if (isBasic(componentType.getTypeName())) {
-                arrayMetaData.setActualData(new MetaData.Ended());
+                arrayMetaData.setActualData(classMetaDataMap.computeIfAbsent(componentType.getTypeName(), (k) -> new GenericMetaData(PLACEHOLDER, componentType)));
             } else {
-                arrayMetaData.setActualData(resolveClass(ACTUAL, componentType));
+                arrayMetaData.setActualData(resolveClass(PLACEHOLDER, componentType));
             }
             classMetaDataMap.put(typeName, arrayMetaData);
             return arrayMetaData;
@@ -114,10 +128,13 @@ public class MetaDataFactory {
     }
 
     private MetaData doResolveParameterizedType(ParameterizedType parameterizedType) {
+        if (genericParameterMap.containsKey(parameterizedType.toString())) {
+            return genericParameterMap.get(parameterizedType.toString());
+        }
+
         if (isCollection((Class<?>) parameterizedType.getRawType())) {
             MetaData actualMetaData = resolveGenericType(parameterizedType.getActualTypeArguments()[0]);
-            CollectionMetaData collectionMetaData = new CollectionMetaData(PLACEHOLDER, rawType(parameterizedType.getActualTypeArguments()[0]));
-            collectionMetaData.setActualData(actualMetaData);
+            CollectionMetaData collectionMetaData = new CollectionMetaData(PLACEHOLDER, rawType(parameterizedType.getActualTypeArguments()[0]), actualMetaData);
             genericParameterMap.put(parameterizedType.toString(), collectionMetaData);
             return collectionMetaData;
         }
@@ -150,23 +167,11 @@ public class MetaDataFactory {
 
     private MetaData resolveField(String key, Type genericType) {
         MetaData metaData = resolveGenericType(genericType);
-        if (PLACEHOLDER.equals(metaData.getKey()) || ACTUAL.equals(metaData.getKey())) {
+        if (PLACEHOLDER.equals(metaData.getKey())) {
             return new KeyWrapperMetaData(key, metaData);
         }
         return metaData;
     }
-
-    private static final Collection<String> BASIC_TYPE = List.of(
-            Byte.TYPE.getTypeName(), Byte.class.getTypeName(),
-            Boolean.TYPE.getTypeName(), Boolean.class.getTypeName(),
-            Character.TYPE.getTypeName(), Character.class.getTypeName(),
-            Short.TYPE.getTypeName(), Short.class.getTypeName(),
-            Integer.TYPE.getTypeName(), Integer.class.getTypeName(),
-            Float.TYPE.getTypeName(), Float.class.getTypeName(),
-            Double.TYPE.getTypeName(), Double.class.getTypeName(),
-            Long.TYPE.getTypeName(), Long.class.getTypeName(),
-            String.class.getTypeName()
-    );
 
     private boolean isBasic(String typeName) {
         return BASIC_TYPE.contains(typeName);
@@ -181,8 +186,7 @@ public class MetaDataFactory {
             return (Class<?>) ((ParameterizedType)type).getRawType();
         }
         if (type instanceof GenericArrayType) {
-            Type genericComponentType = ((GenericArrayType)type).getGenericComponentType();
-            return rawType(genericComponentType);
+            return rawType(((GenericArrayType)type).getGenericComponentType());
         }
         if (type instanceof Class) {
             return (Class<?>) type;

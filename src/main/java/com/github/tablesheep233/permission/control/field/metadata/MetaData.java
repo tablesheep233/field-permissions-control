@@ -23,17 +23,4 @@ public interface MetaData {
     default List<MetaData> getMulti() {
         throw new UnsupportedOperationException();
     }
-
-    class Ended implements MetaData {
-
-        @Override
-        public String getKey() {
-            return null;
-        }
-
-        @Override
-        public Class<?> getType() {
-            return null;
-        }
-    }
 }

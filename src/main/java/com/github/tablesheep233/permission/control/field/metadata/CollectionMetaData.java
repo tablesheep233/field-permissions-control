@@ -11,6 +11,12 @@ public class CollectionMetaData extends GenericMetaData {
         this.actualType = actualType;
     }
 
+    public CollectionMetaData(String key, Class<?> actualType, MetaData actualData) {
+        super(key);
+        this.actualType = actualType;
+        this.actualData = actualData;
+    }
+
     public void setActualData(MetaData actualData) {
         this.actualData = actualData;
     }
@@ -23,10 +29,6 @@ public class CollectionMetaData extends GenericMetaData {
     @Override
     public Class<?> getActualType() {
         return actualType;
-    }
-
-    public String getActualTypeName() {
-        return actualType.getTypeName();
     }
 
     @Override

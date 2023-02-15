@@ -12,6 +12,11 @@ public class KeyWrapperMetaData implements MetaData {
     }
 
     @Override
+    public String metaDataType() {
+        return KEY;
+    }
+
+    @Override
     public String getKey() {
         return key;
     }
@@ -19,5 +24,9 @@ public class KeyWrapperMetaData implements MetaData {
     @Override
     public Class<?> getType() {
         return target.getType();
+    }
+
+    public MetaData getTarget() {
+        return target;
     }
 }

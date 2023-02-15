@@ -25,6 +25,11 @@ public class GenericMetaData implements MetaData {
         return type;
     }
 
+    @Override
+    public String metaDataType() {
+        return GENERIC;
+    }
+
     public String getTypeName() {
         return type.getTypeName();
     }

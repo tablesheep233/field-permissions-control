@@ -10,6 +10,11 @@ public class MultiMetaData extends GenericMetaData {
         super(key, type);
     }
 
+    @Override
+    public String metaDataType() {
+        return MULTI;
+    }
+
     public void setMultiData(List<MetaData> multiData) {
         this.multiData = multiData;
     }

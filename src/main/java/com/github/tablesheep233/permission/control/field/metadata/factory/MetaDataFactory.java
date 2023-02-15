@@ -5,6 +5,7 @@ import org.reflections.ReflectionUtils;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.*;
+import java.math.BigDecimal;
 import java.util.*;
 
 @Component
@@ -21,7 +22,7 @@ public class MetaDataFactory {
             Float.TYPE.getTypeName(), Float.class.getTypeName(),
             Double.TYPE.getTypeName(), Double.class.getTypeName(),
             Long.TYPE.getTypeName(), Long.class.getTypeName(),
-            String.class.getTypeName()
+            String.class.getTypeName(), BigDecimal.class.getTypeName()
     );
 
     private final Map<String, RootMetaData> rootMetaDataMap = new HashMap<>(256);
@@ -30,7 +31,7 @@ public class MetaDataFactory {
     private final Map<String, MetaData> genericParameterMap = new HashMap<>(128);
     private final List<String> resolvingGenericParameter = new ArrayList<>(8);
 
-    public synchronized MetaData create(String key, Class<?> clazz) {
+    public synchronized RootMetaData create(String key, Class<?> clazz) {
         return rootMetaDataMap.computeIfAbsent(key, (k) -> {
             RootMetaData metaData = new RootMetaData(k, clazz, resolveFields(clazz));
 
@@ -71,7 +72,7 @@ public class MetaDataFactory {
 
         Type genericComponentType = genericType.getGenericComponentType();
         if (genericComponentType instanceof  ParameterizedType) {
-            ArrayMetaData arrayMetaData = new ArrayMetaData(PLACEHOLDER, rawType(((ParameterizedType) genericComponentType).getRawType()), doResolveParameterizedType((ParameterizedType) genericComponentType));
+            ArrayMetaData arrayMetaData = new ArrayMetaData(PLACEHOLDER, doResolveParameterizedType((ParameterizedType) genericComponentType));
             genericParameterMap.put(genericType.toString(), arrayMetaData);
             return arrayMetaData;
         }
@@ -106,7 +107,7 @@ public class MetaDataFactory {
 
         if (clazz.isArray()) {
             Class<?> componentType = clazz.getComponentType();
-            ArrayMetaData arrayMetaData = new ArrayMetaData(PLACEHOLDER, componentType);
+            ArrayMetaData arrayMetaData = new ArrayMetaData(PLACEHOLDER);
             if (isBasic(componentType.getTypeName())) {
                 arrayMetaData.setActualData(classMetaDataMap.computeIfAbsent(componentType.getTypeName(), (k) -> new GenericMetaData(PLACEHOLDER, componentType)));
             } else {
@@ -117,7 +118,7 @@ public class MetaDataFactory {
         }
 
         if (isCollection(clazz)) {
-            CollectionMetaData collectionMetaData = new CollectionMetaData(PLACEHOLDER, Object.class);
+            CollectionMetaData collectionMetaData = new CollectionMetaData(PLACEHOLDER, classMetaDataMap.computeIfAbsent(Object.class.getTypeName(), (k) -> new GenericMetaData(PLACEHOLDER, Object.class)));
             classMetaDataMap.put(typeName, collectionMetaData);
             return collectionMetaData;
         }
@@ -134,7 +135,7 @@ public class MetaDataFactory {
 
         if (isCollection((Class<?>) parameterizedType.getRawType())) {
             MetaData actualMetaData = resolveGenericType(parameterizedType.getActualTypeArguments()[0]);
-            CollectionMetaData collectionMetaData = new CollectionMetaData(PLACEHOLDER, rawType(parameterizedType.getActualTypeArguments()[0]), actualMetaData);
+            CollectionMetaData collectionMetaData = new CollectionMetaData(PLACEHOLDER, actualMetaData);
             genericParameterMap.put(parameterizedType.toString(), collectionMetaData);
             return collectionMetaData;
         }

@@ -9,9 +9,14 @@ import com.fasterxml.jackson.databind.jsontype.TypeSerializer;
 import com.fasterxml.jackson.databind.ser.DefaultSerializerProvider;
 import com.fasterxml.jackson.databind.ser.SerializerFactory;
 import com.github.tablesheep233.permission.control.field.jackson.annotation.JsonFieldControl;
+import com.github.tablesheep233.permission.control.field.policy.ControlPolicyLoader;
 import com.github.tablesheep233.permission.control.field.util.function.ThrowingConsumer;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
+import java.util.Collection;
+import java.util.Objects;
 
 /**
  * The type Record root value serializer provider.
@@ -22,28 +27,39 @@ public class RecordRootValueSerializerProvider extends DefaultSerializerProvider
 
     private static final long serialVersionUID = 1L;
 
+    private final ControlPolicyLoader policyLoader;
+
     /**
      * Instantiates a new Record root value serializer provider.
+     * @param policyLoader
      */
-    public RecordRootValueSerializerProvider() { super(); }
+    public RecordRootValueSerializerProvider(ControlPolicyLoader policyLoader) {
+        super();
+        this.policyLoader = policyLoader;
+    }
 
     /**
      * Instantiates a new Record root value serializer provider.
      *
      * @param src the src
+     * @param policyLoader
      */
-    public RecordRootValueSerializerProvider(RecordRootValueSerializerProvider src) { super(src); }
+    public RecordRootValueSerializerProvider(RecordRootValueSerializerProvider src, ControlPolicyLoader policyLoader) {
+        super(src);
+        this.policyLoader = policyLoader;
+    }
 
     /**
      * Instantiates a new Record root value serializer provider.
-     *
-     * @param src    the src
+     *  @param src    the src
      * @param config the config
      * @param f      the f
+     * @param policyLoader
      */
     protected RecordRootValueSerializerProvider(SerializerProvider src, SerializationConfig config,
-                                                SerializerFactory f) {
+                                                SerializerFactory f, ControlPolicyLoader policyLoader) {
         super(src, config, f);
+        this.policyLoader = policyLoader;
     }
 
     @Override
@@ -67,9 +83,10 @@ public class RecordRootValueSerializerProvider extends DefaultSerializerProvider
     }
 
     private void invoke(ThrowingConsumer<RecordRootValueSerializerProvider> consumer, Object value) {
-        JsonFieldControl fieldControl = value.getClass().getAnnotation(JsonFieldControl.class);
-        if (fieldControl != null) {
-            JacksonSerializeContext.addKey(fieldControl.name());
+        String rootKey = resolveRootKey(value);
+        if (StringUtils.hasText(rootKey)) {
+            JacksonSerializeContext.setPolicy(policyLoader.loadFlatPolicy(rootKey));
+            JacksonSerializeContext.addKey(rootKey);
         }
         try {
             consumer.accept(this);
@@ -78,17 +95,39 @@ public class RecordRootValueSerializerProvider extends DefaultSerializerProvider
         }
     }
 
+    private String resolveRootKey(Object value) {
+        JsonFieldControl annotation = value.getClass().getAnnotation(JsonFieldControl.class);
+        if (annotation != null) {
+            return annotation.name();
+        }
+
+        if (Collection.class.isAssignableFrom(value.getClass())) {
+            if (!CollectionUtils.isEmpty((Collection<?>) value)) {
+                //if ser collection, element type is the first not null element
+                return resolveRootKey(((Collection)value).stream().filter(Objects::nonNull).findFirst().get());
+            }
+        }
+
+        if (value.getClass().isArray()) {
+            annotation  = value.getClass().getComponentType().getAnnotation(JsonFieldControl.class);
+            if (annotation != null) {
+                return annotation.name();
+            }
+        }
+        return "";
+    }
+
     @Override
     public DefaultSerializerProvider copy()
     {
         if (getClass() != RecordRootValueSerializerProvider.class) {
             return super.copy();
         }
-        return new RecordRootValueSerializerProvider(this);
+        return new RecordRootValueSerializerProvider(this, policyLoader);
     }
 
     @Override
     public RecordRootValueSerializerProvider createInstance(SerializationConfig config, SerializerFactory jsf) {
-        return new RecordRootValueSerializerProvider(this, config, jsf);
+        return new RecordRootValueSerializerProvider(this, config, jsf, policyLoader);
     }
 }

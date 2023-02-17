@@ -2,11 +2,11 @@ package com.github.tablesheep233.permission.control.field.metadata;
 
 import java.util.List;
 
-public class MultiMetaData extends GenericMetaData {
+public class MultiMetadata extends GenericMetadata {
 
-    private List<MetaData> multiData;
+    private List<Metadata> multiData;
 
-    public MultiMetaData(String key, Class<?> type) {
+    public MultiMetadata(String key, Class<?> type) {
         super(key, type);
     }
 
@@ -15,7 +15,7 @@ public class MultiMetaData extends GenericMetaData {
         return MULTI;
     }
 
-    public void setMultiData(List<MetaData> multiData) {
+    public void setMultiData(List<Metadata> multiData) {
         this.multiData = multiData;
     }
 
@@ -25,7 +25,7 @@ public class MultiMetaData extends GenericMetaData {
     }
 
     @Override
-    public List<MetaData> getMulti() {
+    public List<Metadata> getMulti() {
         return multiData;
     }
 }

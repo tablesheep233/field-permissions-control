@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.PropertyWriter;
 import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
+import com.github.tablesheep233.permission.control.field.policy.AllowPredicate;
 
 /**
  * The type Field control property filter.
@@ -23,16 +24,12 @@ public class FieldControlPropertyFilter extends SimpleBeanPropertyFilter {
     @Override
     protected boolean include(PropertyWriter writer) {
         String key = JacksonSerializeContext.key();
-
-        //todo is include
-        return super.include(writer);
+        return super.include(writer) && AllowPredicate.allow(JacksonSerializeContext.policy(), key);
     }
 
     @Override
     protected boolean include(BeanPropertyWriter writer) {
         String key = JacksonSerializeContext.key();
-
-        //todo is include
-        return super.include(writer);
+        return super.include(writer) && AllowPredicate.allow(JacksonSerializeContext.policy(), key);
     }
 }

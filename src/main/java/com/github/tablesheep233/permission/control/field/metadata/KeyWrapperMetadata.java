@@ -1,12 +1,12 @@
 package com.github.tablesheep233.permission.control.field.metadata;
 
-public class KeyWrapperMetaData implements MetaData {
+public class KeyWrapperMetadata implements Metadata {
 
     private String key;
 
-    private MetaData target;
+    private Metadata target;
 
-    public KeyWrapperMetaData(String key, MetaData target) {
+    public KeyWrapperMetadata(String key, Metadata target) {
         this.key = key;
         this.target = target;
     }
@@ -26,7 +26,7 @@ public class KeyWrapperMetaData implements MetaData {
         return target.getType();
     }
 
-    public MetaData getTarget() {
+    public Metadata getTarget() {
         return target;
     }
 }

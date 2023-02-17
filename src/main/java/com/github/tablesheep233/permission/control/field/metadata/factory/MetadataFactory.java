@@ -6,10 +6,11 @@ import org.springframework.stereotype.Component;
 
 import java.lang.reflect.*;
 import java.math.BigDecimal;
+import java.time.temporal.Temporal;
 import java.util.*;
 
 @Component
-public class MetaDataFactory {
+public class MetadataFactory {
 
     public static final String PLACEHOLDER = "?";
 
@@ -25,31 +26,26 @@ public class MetaDataFactory {
             String.class.getTypeName(), BigDecimal.class.getTypeName()
     );
 
-    private final Map<String, RootMetaData> rootMetaDataMap = new HashMap<>(256);
-    private final Map<String, MetaData> classMetaDataMap = new HashMap<>(256);
+    private final Map<String, RootMetadata> rootMetaDataMap = new HashMap<>(256);
+    private final Map<String, Metadata> classMetaDataMap = new HashMap<>(256);
     private final Map<String, Map<String, String>> typeParameterMap = new HashMap<>(128);
-    private final Map<String, MetaData> genericParameterMap = new HashMap<>(128);
+    private final Map<String, Metadata> genericParameterMap = new HashMap<>(128);
     private final List<String> resolvingGenericParameter = new ArrayList<>(8);
 
-    public synchronized RootMetaData create(String key, Class<?> clazz) {
-        return rootMetaDataMap.computeIfAbsent(key, (k) -> {
-            RootMetaData metaData = new RootMetaData(k, clazz, resolveFields(clazz));
-
-            //todo merge metadata
-            return metaData;
-        });
+    public synchronized RootMetadata create(String key, Class<?> clazz) {
+        return rootMetaDataMap.computeIfAbsent(key, (k) -> new RootMetadata(k, clazz, resolveFields(clazz)));
     }
 
-    private List<MetaData> resolveFields(Class<?> clazz) {
+    private List<Metadata> resolveFields(Class<?> clazz) {
         Set<Field> fields = ReflectionUtils.getAllFields(clazz, field -> !Modifier.isStatic(field.getModifiers()));
-        List<MetaData> fieldMetaData = new ArrayList<>(fields.size());
+        List<Metadata> fieldMetaData = new ArrayList<>(fields.size());
         for (Field field : fields) {
             fieldMetaData.add(resolveField(field.getName(), field.getGenericType()));
         }
         return fieldMetaData;
     }
 
-    private MetaData resolveGenericType(Type genericType) {
+    private Metadata resolveGenericType(Type genericType) {
         if (genericType instanceof Class) {
             return doResolveClass((Class<?>) genericType);
         }
@@ -65,24 +61,24 @@ public class MetaDataFactory {
         throw new UnsupportedOperationException();
     }
 
-    private MetaData doResolveGenericArrayType(GenericArrayType genericType) {
+    private Metadata doResolveGenericArrayType(GenericArrayType genericType) {
         if (genericParameterMap.containsKey(genericType.toString())) {
             return genericParameterMap.get(genericType.toString());
         }
 
         Type genericComponentType = genericType.getGenericComponentType();
         if (genericComponentType instanceof  ParameterizedType) {
-            ArrayMetaData arrayMetaData = new ArrayMetaData(PLACEHOLDER, doResolveParameterizedType((ParameterizedType) genericComponentType));
+            ArrayMetadata arrayMetaData = new ArrayMetadata(PLACEHOLDER, doResolveParameterizedType((ParameterizedType) genericComponentType));
             genericParameterMap.put(genericType.toString(), arrayMetaData);
             return arrayMetaData;
         }
         throw new RuntimeException();
     }
 
-    private MetaData doResolveTypeVariable(TypeVariable genericType) {
+    private Metadata doResolveTypeVariable(TypeVariable genericType) {
         String resolvingGenericParameterKey = resolvingGenericParameter.get(resolvingGenericParameter.size() - 1);
         String metaDateKey = typeParameterMap.get(resolvingGenericParameterKey).get(genericType.getName());
-        MetaData metaData = classMetaDataMap.get(metaDateKey);
+        Metadata metaData = classMetaDataMap.get(metaDateKey);
         if (metaData != null) {
             return metaData;
         }
@@ -93,23 +89,23 @@ public class MetaDataFactory {
         throw new RuntimeException();
     }
 
-    private MetaData doResolveClass(Class<?> clazz) {
+    private Metadata doResolveClass(Class<?> clazz) {
         String typeName = clazz.getTypeName();
         if (classMetaDataMap.containsKey(typeName)) {
             return classMetaDataMap.get(typeName);
         }
 
-        if (isBasic(typeName)) {
-            GenericMetaData genericMetaData = new GenericMetaData(PLACEHOLDER, clazz);
+        if (isGeneric(clazz)) {
+            GenericMetadata genericMetaData = new GenericMetadata(PLACEHOLDER, clazz);
             classMetaDataMap.put(typeName, genericMetaData);
             return genericMetaData;
         }
 
         if (clazz.isArray()) {
             Class<?> componentType = clazz.getComponentType();
-            ArrayMetaData arrayMetaData = new ArrayMetaData(PLACEHOLDER);
-            if (isBasic(componentType.getTypeName())) {
-                arrayMetaData.setActualData(classMetaDataMap.computeIfAbsent(componentType.getTypeName(), (k) -> new GenericMetaData(PLACEHOLDER, componentType)));
+            ArrayMetadata arrayMetaData = new ArrayMetadata(PLACEHOLDER);
+            if (isGeneric(componentType)) {
+                arrayMetaData.setActualData(classMetaDataMap.computeIfAbsent(componentType.getTypeName(), (k) -> new GenericMetadata(PLACEHOLDER, componentType)));
             } else {
                 arrayMetaData.setActualData(resolveClass(PLACEHOLDER, componentType));
             }
@@ -118,24 +114,24 @@ public class MetaDataFactory {
         }
 
         if (isCollection(clazz)) {
-            CollectionMetaData collectionMetaData = new CollectionMetaData(PLACEHOLDER, classMetaDataMap.computeIfAbsent(Object.class.getTypeName(), (k) -> new GenericMetaData(PLACEHOLDER, Object.class)));
+            CollectionMetadata collectionMetaData = new CollectionMetadata(PLACEHOLDER, classMetaDataMap.computeIfAbsent(Object.class.getTypeName(), (k) -> new GenericMetadata(PLACEHOLDER, Object.class)));
             classMetaDataMap.put(typeName, collectionMetaData);
             return collectionMetaData;
         }
 
-        MetaData metaData = resolveClass(clazz);
+        Metadata metaData = resolveClass(clazz);
         classMetaDataMap.put(typeName, metaData);
         return metaData;
     }
 
-    private MetaData doResolveParameterizedType(ParameterizedType parameterizedType) {
+    private Metadata doResolveParameterizedType(ParameterizedType parameterizedType) {
         if (genericParameterMap.containsKey(parameterizedType.toString())) {
             return genericParameterMap.get(parameterizedType.toString());
         }
 
         if (isCollection((Class<?>) parameterizedType.getRawType())) {
-            MetaData actualMetaData = resolveGenericType(parameterizedType.getActualTypeArguments()[0]);
-            CollectionMetaData collectionMetaData = new CollectionMetaData(PLACEHOLDER, actualMetaData);
+            Metadata actualMetadata = resolveGenericType(parameterizedType.getActualTypeArguments()[0]);
+            CollectionMetadata collectionMetaData = new CollectionMetadata(PLACEHOLDER, actualMetadata);
             genericParameterMap.put(parameterizedType.toString(), collectionMetaData);
             return collectionMetaData;
         }
@@ -150,28 +146,32 @@ public class MetaDataFactory {
         }
         typeParameterMap.put(parameterizedType.getTypeName(), signatureMap);
         resolvingGenericParameter.add(parameterizedType.getTypeName());
-        MetaData metaData = resolveClass((Class<?>) parameterizedType.getRawType());
+        Metadata metaData = resolveClass((Class<?>) parameterizedType.getRawType());
         resolvingGenericParameter.remove(resolvingGenericParameter.size() - 1);
         genericParameterMap.put(parameterizedType.toString(), metaData);
         return metaData;
     }
 
-    private MetaData resolveClass(Class<?> type) {
+    private Metadata resolveClass(Class<?> type) {
         return resolveClass(PLACEHOLDER, type);
     }
 
-    private MetaData resolveClass(String key, Class<?> type) {
-        MultiMetaData metaData = new MultiMetaData(key, type);
+    private Metadata resolveClass(String key, Class<?> type) {
+        MultiMetadata metaData = new MultiMetadata(key, type);
         metaData.setMultiData(resolveFields(type));
         return metaData;
     }
 
-    private MetaData resolveField(String key, Type genericType) {
-        MetaData metaData = resolveGenericType(genericType);
+    private Metadata resolveField(String key, Type genericType) {
+        Metadata metaData = resolveGenericType(genericType);
         if (PLACEHOLDER.equals(metaData.getKey())) {
-            return new KeyWrapperMetaData(key, metaData);
+            return new KeyWrapperMetadata(key, metaData);
         }
         return metaData;
+    }
+
+    private boolean isGeneric(Class<?> type) {
+        return isBasic(type.getTypeName()) || type.isEnum() || Temporal.class.isAssignableFrom(type) || Date.class.isAssignableFrom(type);
     }
 
     private boolean isBasic(String typeName) {

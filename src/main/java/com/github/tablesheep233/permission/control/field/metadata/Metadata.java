@@ -2,7 +2,7 @@ package com.github.tablesheep233.permission.control.field.metadata;
 
 import java.util.List;
 
-public interface MetaData {
+public interface Metadata {
 
     String GENERIC = "GENERIC";
     String ARRAY = "ARRAY";
@@ -19,13 +19,13 @@ public interface MetaData {
     default boolean isCollection() {
         return false;
     }
-    default MetaData getActual() {
+    default Metadata getActual() {
         throw new UnsupportedOperationException();
     }
     default boolean isMulti() {
         return false;
     }
-    default List<MetaData> getMulti() {
+    default List<Metadata> getMulti() {
         throw new UnsupportedOperationException();
     }
 }

@@ -6,8 +6,8 @@ import com.github.tablesheep233.permission.control.field.jackson.FieldControlPro
 import com.github.tablesheep233.permission.control.field.jackson.JsonFieldControlAnnotationIntrospector;
 import com.github.tablesheep233.permission.control.field.jackson.RecordRootValueSerializerProvider;
 import com.github.tablesheep233.permission.control.field.jackson.annotation.JsonFieldControl;
+import com.github.tablesheep233.permission.control.field.policy.ControlPolicyLoader;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Configuration;
 
 /**
@@ -16,8 +16,10 @@ import org.springframework.context.annotation.Configuration;
  * @author <a href="mailto:858916094@qq.com">tablesheep233</a>
  */
 @Configuration
-@ConditionalOnBean(ObjectMapper.class)
 public class JacksonConfig {
+
+    @Autowired
+    private ControlPolicyLoader policyLoader;
 
     /**
      * Configure object mapper.
@@ -27,7 +29,7 @@ public class JacksonConfig {
     @Autowired
     public void configureObjectMapper(ObjectMapper objectMapper) {
         objectMapper.setConfig(objectMapper.getSerializationConfig().with(new JsonFieldControlAnnotationIntrospector()))
-                .setSerializerProvider(new RecordRootValueSerializerProvider())
+                .setSerializerProvider(new RecordRootValueSerializerProvider(policyLoader))
                 .setFilterProvider(new SimpleFilterProvider().addFilter(JsonFieldControl.FILTER_NAME, new FieldControlPropertyFilter()));
     }
 }

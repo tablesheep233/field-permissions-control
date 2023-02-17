@@ -1,14 +1,14 @@
 package com.github.tablesheep233.permission.control.field.metadata;
 
-public class CollectionMetaData extends GenericMetaData {
+public class CollectionMetadata extends GenericMetadata {
 
-    private MetaData actualData;
+    private Metadata actualData;
 
-    public CollectionMetaData(String key) {
+    public CollectionMetadata(String key) {
         super(key);
     }
 
-    public CollectionMetaData(String key, MetaData actualData) {
+    public CollectionMetadata(String key, Metadata actualData) {
         super(key);
         this.actualData = actualData;
     }
@@ -18,7 +18,7 @@ public class CollectionMetaData extends GenericMetaData {
         return COLLECTION;
     }
 
-    public void setActualData(MetaData actualData) {
+    public void setActualData(Metadata actualData) {
         this.actualData = actualData;
     }
 
@@ -28,7 +28,7 @@ public class CollectionMetaData extends GenericMetaData {
     }
 
     @Override
-    public MetaData getActual() {
-        return ArrayMetaData.getRealActual(actualData);
+    public Metadata getActual() {
+        return ArrayMetadata.getRealActual(actualData);
     }
 }

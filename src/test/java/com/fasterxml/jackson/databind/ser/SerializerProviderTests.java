@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.BaseMapTest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationConfig;
 import com.github.tablesheep233.permission.control.field.jackson.RecordRootValueSerializerProvider;
+import com.github.tablesheep233.permission.control.field.policy.ControlPolicyLoader;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -26,7 +27,7 @@ public class SerializerProviderTests extends BaseMapTest {
         ObjectMapper mapper = newJsonMapper();
         SerializationConfig config = mapper.getSerializationConfig();
         SerializerFactory f = new BeanSerializerFactory(null);
-        DefaultSerializerProvider prov = new RecordRootValueSerializerProvider().createInstance(config, f);
+        DefaultSerializerProvider prov = new RecordRootValueSerializerProvider(ControlPolicyLoader.EMPTY).createInstance(config, f);
 
         // Should have working default key and null key serializers
         assertNotNull(prov.findKeySerializer(mapper.constructType(String.class), null));
